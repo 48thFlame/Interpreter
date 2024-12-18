@@ -7,23 +7,28 @@ module AST (
 
 import Data.Function ((&))
 import qualified Data.Tree as Tree
-import Data.Tree.Pretty
+import Data.Tree.Pretty (drawVerticalTree)
 import Debug.Trace
 
 debugLog :: (Show b) => b -> b
 debugLog a =
     traceShow a a
 
-data Operator = Addition | Subtraction
+data Operator = Addition | Subtraction | Multiplication | Division | Power
 
 instance Show Operator where
     show Addition = "+"
     show Subtraction = "-"
+    show Multiplication = "*"
+    show Division = "/"
+    show Power = "^"
 
--- Precedence and associativity functions (example)
 precedence :: Operator -> Int
 precedence Addition = 1
 precedence Subtraction = 1
+precedence Multiplication = 2
+precedence Division = 2
+precedence Power = 3
 
 data AST = AST {left :: AST, operator :: Operator, right :: AST} | Value Float
 
@@ -43,6 +48,9 @@ stringToToken s =
     case s of
         "+" -> OpToken Addition
         "-" -> OpToken Subtraction
+        "*" -> OpToken Multiplication
+        "/" -> OpToken Division
+        "^" -> OpToken Power
         _ ->
             NumToken (read s)
 
@@ -96,3 +104,9 @@ solve AST{left = l, operator = o, right = r} =
             solve l + solve r
         Subtraction ->
             solve l - solve r
+        Multiplication ->
+            solve l * solve r
+        Division ->
+            solve l / solve r
+        Power ->
+            solve l ** solve r

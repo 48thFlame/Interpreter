@@ -49,7 +49,7 @@ main = do
 
     putStrLn ""
 
-    let ps = parse "123 - 24 + 35 + 6"
+    let ps = parse "8 ^ 5 / 8 - 8 ^ 4"
 
     print ps
 
