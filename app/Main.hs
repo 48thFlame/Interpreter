@@ -4,54 +4,13 @@ import AST
 
 main :: IO ()
 main = do
-    putStrLn ""
+    putStrLn "---------"
 
-    let t =
-            AST
-                { left =
-                    AST
-                        { left = Value 1
-                        , operator = Addition
-                        , right = Value 1
-                        }
-                , operator = Addition
-                , right =
-                    AST
-                        { left =
-                            AST
-                                { left =
-                                    Value 1
-                                , operator = Addition
-                                , right = Value 1
-                                }
-                        , operator = Addition
-                        , right =
-                            AST
-                                { left =
-                                    AST{left = Value 1, operator = Addition, right = Value 1}
-                                , operator = Addition
-                                , right =
-                                    AST
-                                        { left =
-                                            AST{left = Value 1, operator = Addition, right = Value 1}
-                                        , operator = Addition
-                                        , right = Value 1
-                                        }
-                                }
-                        }
-                }
+    let toParse = "  1 + 2324435546*4234.5454 / 58.87    ^ 0.2  "
+    print toParse
 
-    print t
-
-    let s = solve t
-
-    print s
-
-    putStrLn ""
-
-    let ps = parse "8 ^ 5 / 8 - 8 ^ 4"
-
+    let ps = parse toParse
     print ps
 
-    let s2 = solve ps
-    print s2
+    let solution = solve ps
+    print solution

@@ -5,6 +5,7 @@ module AST (
     parse,
 ) where
 
+import Data.Char (isDigit)
 import Data.Function ((&))
 import qualified Data.Tree as Tree
 import Data.Tree.Pretty (drawVerticalTree)
@@ -43,8 +44,8 @@ instance Show AST where
     show ast =
         drawVerticalTree $ astToDataTree ast
 
-stringToToken :: String -> Token
-stringToToken s =
+stringedTokenToToken :: String -> Token
+stringedTokenToToken s =
     case s of
         "+" -> OpToken Addition
         "-" -> OpToken Subtraction
@@ -53,6 +54,33 @@ stringToToken s =
         "^" -> OpToken Power
         _ ->
             NumToken (read s)
+
+isNum :: Char -> Bool
+isNum c = isDigit c || c == '.'
+
+isSpace :: Char -> Bool
+isSpace c = c == ' '
+
+-- | parse a string and return the tokens
+tokenize :: String -> [Token] -> [Char] -> [Token]
+-- 3 case where (acc == ""): done, char is space, start of new token
+tokenize "" parsedTokens [] = parsedTokens
+tokenize "" parsedTokens (' ' : rest) = tokenize "" parsedTokens rest
+tokenize "" parsedTokens (char : rest) = tokenize [char] parsedTokens rest
+-- base case: done going threw the string
+tokenize acc parsedTokens [] =
+    parsedTokens ++ [stringedTokenToToken acc]
+-- otherwise: loop
+tokenize acc parsedTokens (char : rest)
+    | isSpace char = tokenize "" (parsedTokens ++ [stringedTokenToToken acc]) rest
+    -- if isDigit need to assume might be big number: so add to `acc`
+    | isNum char = tokenize (acc ++ [char]) parsedTokens rest
+    -- otherwise: must be operator tokenize immediately
+    | otherwise =
+        tokenize
+            ""
+            (parsedTokens ++ [stringedTokenToToken acc, stringedTokenToToken [char]])
+            rest
 
 dealWithOperator :: Operator -> [Operator] -> [AST] -> ([Operator], [AST])
 dealWithOperator oppProcessing [] outStack = ([oppProcessing], outStack)
@@ -71,30 +99,28 @@ dealWithOperator oppProcessing oppStack outStack =
             -- add oppProcessing to oppStack
                 (oppProcessing : oppStack, outStack)
 
--- | oppStack outputStack input -> AST
-shuttingYard :: [Operator] -> [AST] -> [Token] -> AST
-shuttingYard [] [ast] [] = ast -- finished, done.
-shuttingYard oppStack outStack (t : rest) =
+-- | shuttingYard :: oppStack outputStack inputTokens -> AST
+shuntingYard :: [Operator] -> [AST] -> [Token] -> AST
+shuntingYard [] [ast] [] = ast -- finished, done.
+shuntingYard oppStack outStack (t : rest) =
     -- for each token
     case t of
         -- if its number add to `outStack`
         NumToken n ->
-            shuttingYard oppStack (Value n : outStack) rest
-        -- if it's an operator then
+            shuntingYard oppStack (Value n : outStack) rest
+        -- if it's an operator then `dealWithOperator`
         OpToken o ->
             let (newOppStack, newOutStack) = dealWithOperator o oppStack outStack
-             in shuttingYard newOppStack newOutStack rest
-shuttingYard (o : oppRest) (r : l : outRest) [] =
-    shuttingYard oppRest (AST{left = l, operator = o, right = r} : outRest) []
-shuttingYard _ _ _ = error "Invalid input"
+             in shuntingYard newOppStack newOutStack rest
+shuntingYard (o : oppRest) (r : l : outRest) [] =
+    shuntingYard oppRest (AST{left = l, operator = o, right = r} : outRest) []
+shuntingYard _ _ _ = error "Invalid input"
 
 parse :: String -> AST
 parse s =
-    words s
+    tokenize "" [] s
         & debugLog
-        & map stringToToken
-        & debugLog
-        & shuttingYard [] []
+        & shuntingYard [] []
 
 solve :: AST -> Float
 solve (Value n) = n
