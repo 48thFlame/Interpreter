@@ -6,7 +6,7 @@ main :: IO ()
 main = do
     putStrLn "---------"
 
-    let toParse = "  1 + 2324435546*4234.5454 / 58.87    ^ 0.2  "
+    let toParse = "12 *23+  6 ^ 7"
     print toParse
 
     let ps = parse toParse

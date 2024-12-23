@@ -3,6 +3,7 @@ module AST (
     AST (..),
     solve,
     parse,
+    isNum,
 ) where
 
 import Data.Char (isDigit)
@@ -53,7 +54,7 @@ stringedTokenToToken s =
         "/" -> OpToken Division
         "^" -> OpToken Power
         _ ->
-            NumToken (read s)
+            NumToken (read (debugLog s))
 
 isNum :: Char -> Bool
 isNum c = isDigit c || c == '.'
@@ -66,7 +67,9 @@ tokenize :: String -> [Token] -> [Char] -> [Token]
 -- 3 case where (acc == ""): done, char is space, start of new token
 tokenize "" parsedTokens [] = parsedTokens
 tokenize "" parsedTokens (' ' : rest) = tokenize "" parsedTokens rest
-tokenize "" parsedTokens (char : rest) = tokenize [char] parsedTokens rest
+tokenize "" parsedTokens (char : rest)
+    | isNum char = tokenize [char] parsedTokens rest
+    | otherwise = tokenize "" (parsedTokens ++ [stringedTokenToToken [char]]) rest
 -- base case: done going threw the string
 tokenize acc parsedTokens [] =
     parsedTokens ++ [stringedTokenToToken acc]
@@ -79,7 +82,9 @@ tokenize acc parsedTokens (char : rest)
     | otherwise =
         tokenize
             ""
-            (parsedTokens ++ [stringedTokenToToken acc, stringedTokenToToken [char]])
+            ( parsedTokens
+                ++ [stringedTokenToToken acc, stringedTokenToToken [debugLog char]]
+            )
             rest
 
 dealWithOperator :: Operator -> [Operator] -> [AST] -> ([Operator], [AST])
