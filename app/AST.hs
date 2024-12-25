@@ -21,8 +21,6 @@ data Operator
     | Multiplication
     | Division
     | Power
-    | OpenParenthesis
-    | CloseParenthesis
     deriving (Eq)
 
 instance Show Operator where
@@ -31,12 +29,13 @@ instance Show Operator where
     show Multiplication = "*"
     show Division = "/"
     show Power = "^"
-    show OpenParenthesis = "("
-    show CloseParenthesis = ")"
+
+data Parenthesis
+    = OpenP
+    | CloseP
+    deriving (Show, Eq)
 
 precedence :: Operator -> Int
-precedence OpenParenthesis = 0
-precedence CloseParenthesis = 0
 precedence Addition = 1
 precedence Subtraction = 1
 precedence Multiplication = 2
@@ -47,6 +46,7 @@ data AST = AST {left :: AST, operator :: Operator, right :: AST} | Value Float
 
 data Token
     = OpToken Operator
+    | ParToken Parenthesis
     | NumToken Float
     deriving (Show, Eq)
 
@@ -67,8 +67,8 @@ stringedTokenToToken s =
         "*" -> OpToken Multiplication
         "/" -> OpToken Division
         "^" -> OpToken Power
-        "(" -> OpToken OpenParenthesis
-        ")" -> OpToken CloseParenthesis
+        "(" -> ParToken OpenP
+        ")" -> ParToken CloseP
         _ ->
             NumToken (read s)
 
@@ -104,27 +104,32 @@ tokenize acc parsedTokens (char : rest)
             )
             rest
 
-dealWithOperator :: Operator -> [Operator] -> [AST] -> ([Operator], [AST])
-dealWithOperator oppProcessing [] outStack = ([oppProcessing], outStack)
-dealWithOperator oppProcessing oppStack outStack =
-    let (o : restOpp) = oppStack
-     in if precedence o >= precedence oppProcessing
-            then -- use the operator on top of that stack and loop again (threw the operator stack)
-                case outStack of
-                    (r : l : restOut) ->
-                        dealWithOperator
-                            oppProcessing
-                            restOpp
-                            (AST{left = l, operator = o, right = r} : restOut)
-                    _ -> error "Not enough operands!"
-            else -- if precedence o < precedence oppProcessing
-            -- add oppProcessing to oppStack
-                (oppProcessing : oppStack, outStack)
+type OpPArStack = [Either Parenthesis Operator]
 
-dealWithParenthesis :: [Operator] -> [AST] -> ([Operator], [AST])
-dealWithParenthesis (OpenParenthesis : rest) outStack = (rest, outStack)
-dealWithParenthesis [] _outStack = error "Unmatched closing operator!" -- ([], outStack)
-dealWithParenthesis (o : restOpp) outStack =
+dealWithOperator :: Operator -> OpPArStack -> [AST] -> (OpPArStack, [AST])
+dealWithOperator oppProcessing [] outStack = ([Right oppProcessing], outStack)
+dealWithOperator oppProcessing oppStack outStack =
+    case oppStack of
+        (Right o : restOpp) ->
+            if precedence o >= precedence oppProcessing
+                then -- use the operator on top of that stack and loop again (threw the operator stack)
+                    case outStack of
+                        (r : l : restOut) ->
+                            dealWithOperator
+                                oppProcessing
+                                restOpp
+                                (AST{left = l, operator = o, right = r} : restOut)
+                        _ -> error "Not enough operands!"
+                else -- if precedence o < precedence oppProcessing
+                -- add oppProcessing to oppStack
+                    (Right oppProcessing : oppStack, outStack)
+        (Left _ : _) -> (Right oppProcessing : oppStack, outStack)
+
+dealWithParenthesis :: OpPArStack -> [AST] -> (OpPArStack, [AST])
+dealWithParenthesis (Left OpenP : rest) outStack = (rest, outStack)
+dealWithParenthesis [] _outStack = error "Unmatched closing operator!"
+dealWithParenthesis (Left CloseP : _) _outStack = error "Dealing with parenthesis, by building ast but hit parenthesis!"
+dealWithParenthesis (Right o : restOpp) outStack =
     case outStack of
         (r : l : restOut) ->
             dealWithParenthesis
@@ -133,7 +138,7 @@ dealWithParenthesis (o : restOpp) outStack =
         _ -> error "Not enough operands!"
 
 -- | shuttingYard :: oppStack outputStack inputTokens -> AST
-shuntingYard :: [Operator] -> [AST] -> [Token] -> AST
+shuntingYard :: OpPArStack -> [AST] -> [Token] -> AST
 shuntingYard [] [ast] [] = ast -- finished, done.
 shuntingYard oppStack outStack (t : rest) =
     -- for each token
@@ -142,10 +147,10 @@ shuntingYard oppStack outStack (t : rest) =
         NumToken n ->
             shuntingYard oppStack (Value n : outStack) rest
         -- if it's an OpenParenthesis, just add it to the oppStack
-        OpToken OpenParenthesis ->
-            shuntingYard (OpenParenthesis : oppStack) outStack rest
+        ParToken OpenP ->
+            shuntingYard (Left OpenP : oppStack) outStack rest
         -- if it's a CloseParenthesis, then `dealWithParenthesis` (keep creating nodes until OpenParenthesis)
-        OpToken CloseParenthesis ->
+        ParToken CloseP ->
             let (newOppStack, newOutStack) = dealWithParenthesis oppStack outStack
              in shuntingYard newOppStack newOutStack rest
         -- if it's an operator then `dealWithOperator` (check precedence and if needed, create nodes
@@ -153,7 +158,7 @@ shuntingYard oppStack outStack (t : rest) =
             let (newOppStack, newOutStack) = dealWithOperator o oppStack outStack
              in shuntingYard newOppStack newOutStack rest
 -- if no tokens left, cleanup.
-shuntingYard (o : oppRest) (r : l : outRest) [] =
+shuntingYard (Right o : oppRest) (r : l : outRest) [] =
     shuntingYard oppRest (AST{left = l, operator = o, right = r} : outRest) []
 shuntingYard _ _ _ = error "Invalid input"
 
@@ -177,4 +182,3 @@ solve AST{left = l, operator = o, right = r} =
             solve l / solve r
         Power ->
             solve l ** solve r
-        _ -> error "Invalid calculation operator"
