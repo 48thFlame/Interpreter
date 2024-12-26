@@ -1,6 +1,6 @@
 module Main (main) where
 
-import AST
+import Parser
 
 main :: IO ()
 main = do
