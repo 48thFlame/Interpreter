@@ -1,10 +1,13 @@
 module Tokenizer (
     Result,
     Token (..),
-    Operator (..),
+    BinaryOperator (..),
     precedence,
+    Function (..),
+    numOfArgs,
     Parenthesis (..),
     tokenize,
+    isNameChar,
 ) where
 
 import Data.Char (isDigit)
@@ -14,12 +17,13 @@ import Text.Read (readMaybe)
 type Result a = Either String a
 
 data Token
-    = OpToken Operator
+    = BinOpToken BinaryOperator
+    | FuncToken Function
     | ParToken Parenthesis
     | NumToken Float
     deriving (Show, Eq)
 
-data Operator
+data BinaryOperator
     = Addition
     | Subtraction
     | Multiplication
@@ -27,19 +31,32 @@ data Operator
     | Power
     deriving (Eq)
 
-instance Show Operator where
+instance Show BinaryOperator where
     show Addition = "+"
     show Subtraction = "-"
     show Multiplication = "*"
     show Division = "/"
     show Power = "^"
 
-precedence :: Operator -> Int
+precedence :: BinaryOperator -> Int
 precedence Addition = 1
 precedence Subtraction = 1
 precedence Multiplication = 2
 precedence Division = 2
 precedence Power = 3
+
+data Function
+    = Sin
+    | Max
+    deriving (Eq)
+
+numOfArgs :: Function -> Int
+numOfArgs Sin = 1
+numOfArgs Max = 2
+
+instance Show Function where
+    show Sin = "sin"
+    show Max = "max"
 
 data Parenthesis
     = OpenP
@@ -49,13 +66,15 @@ data Parenthesis
 stringedTokenToToken :: String -> Result Token
 stringedTokenToToken s =
     case s of
-        "+" -> Right $ OpToken Addition
-        "-" -> Right $ OpToken Subtraction
-        "*" -> Right $ OpToken Multiplication
-        "/" -> Right $ OpToken Division
-        "^" -> Right $ OpToken Power
+        "+" -> Right $ BinOpToken Addition
+        "-" -> Right $ BinOpToken Subtraction
+        "*" -> Right $ BinOpToken Multiplication
+        "/" -> Right $ BinOpToken Division
+        "^" -> Right $ BinOpToken Power
         "(" -> Right $ ParToken OpenP
         ")" -> Right $ ParToken CloseP
+        "sin" -> Right $ FuncToken Sin -- TODO: make this more general
+        "max" -> Right $ FuncToken Max -- TODO: make this more general
         _ ->
             case readMaybe s of
                 Just n -> Right $ NumToken n
@@ -64,36 +83,51 @@ stringedTokenToToken s =
 isNum :: Char -> Bool
 isNum c = isDigit c || c == '.'
 
-isSpace :: Char -> Bool
-isSpace c = c == ' '
+isWhiteSpace :: Char -> Bool
+isWhiteSpace c = c `elem` [' ', '\t', '\n']
+
+isNameChar :: Char -> Bool
+isNameChar c =
+    c `elem` ['a' .. 'z']
+        || c `elem` ['A' .. 'Z']
+        || isDigit c
+        || c == '_'
+
+isOperatorChar :: Char -> Bool
+isOperatorChar c = c `elem` ['+', '-', '*', '/', '^', '(', ')']
+
+-- * when operators are more then 1 char, then define this: `data AccType`
 
 -- | parse a string and return the tokens
 tokenize :: String -> [Token] -> [Char] -> Result [Token]
--- 3 case where (acc == ""):
--- done, char is space, start of new token - either number or just operator.
-tokenize "" parsedTokens [] = Right parsedTokens
-tokenize "" parsedTokens (char : rest)
-    | isSpace char = tokenize "" parsedTokens rest
-    | isNum char = tokenize [char] parsedTokens rest
-    | otherwise = case stringedTokenToToken [char] of
-        Right token -> tokenize "" (parsedTokens ++ [token]) rest
-        Left err -> Left err
--- base case: done going threw the string
-tokenize acc parsedTokens [] =
+-- base cases: done going threw the string
+tokenize "" tokens [] = Right tokens
+tokenize acc tokens [] =
     case stringedTokenToToken acc of
-        Right token -> Right $ parsedTokens ++ [token]
+        Right token -> Right $ tokens ++ [token]
         Left err -> Left err
--- otherwise: loop
-tokenize acc parsedTokens (char : rest)
-    | isSpace char = case stringedTokenToToken acc of
-        Right token -> tokenize "" (parsedTokens ++ [token]) rest
-        Left err -> Left err
-    -- if isDigit need to assume might be big number: so add to `acc`
-    | isNum char = tokenize (acc ++ [char]) parsedTokens rest
-    -- otherwise: must be operator tokenize immediately both `acc` and `char`
-    | otherwise =
+-- cases where (acc == "")
+tokenize "" tokens (char : rest)
+    | isWhiteSpace char = tokenize "" tokens rest -- acc is empty so just continue
+    | isNum char || isNameChar char = tokenize [char] tokens rest -- acc
+    | isOperatorChar char =
+        -- in the future also add to acc (now all operators are 1 char)
+        case stringedTokenToToken [char] of
+            Right token -> tokenize "" (tokens ++ [token]) rest
+            Left err -> Left err -- should not get here ever, its an operatorChar!
+    | otherwise = Left $ "Invalid character: " ++ [char]
+-- cases where (acc /= "")
+tokenize acc tokens (char : rest)
+    | isWhiteSpace char =
+        -- if whitespace, then new "word" -> make the previous a token
+        case stringedTokenToToken acc of
+            Right token -> tokenize "" (tokens ++ [token]) rest
+            Left err -> Left err
+    | isNum char || isNameChar char = tokenize (acc ++ [char]) tokens rest -- in future check for kind of acc
+    | isOperatorChar char =
         case (stringedTokenToToken acc, stringedTokenToToken [char]) of
             (Right token1, Right token2) ->
-                tokenize "" (parsedTokens ++ [token1, token2]) rest
+                tokenize "" (tokens ++ [token1, token2]) rest
             (Left err, _) -> Left err
             (_, Left err) -> Left err
+    | otherwise = Left $ "Invalid character: " ++ [char]
