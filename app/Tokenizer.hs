@@ -47,16 +47,22 @@ precedence Power = 3
 
 data Function
     = Sin
+    | Pi
     | Max
+    | Fst
     deriving (Eq)
 
 numOfArgs :: Function -> Int
 numOfArgs Sin = 1
+numOfArgs Pi = 0
 numOfArgs Max = 2
+numOfArgs Fst = 2
 
 instance Show Function where
     show Sin = "sin"
+    show Pi = "pi"
     show Max = "max"
+    show Fst = "fst"
 
 data Parenthesis
     = OpenP
@@ -74,7 +80,9 @@ stringedTokenToToken s =
         "(" -> Right $ ParToken OpenP
         ")" -> Right $ ParToken CloseP
         "sin" -> Right $ FuncToken Sin -- TODO: make this more general
+        "pi" -> Right $ FuncToken Pi -- TODO: make this more general
         "max" -> Right $ FuncToken Max -- TODO: make this more general
+        "fst" -> Right $ FuncToken Fst -- TODO: make this more general
         _ ->
             case readMaybe s of
                 Just n -> Right $ NumToken n
@@ -105,7 +113,8 @@ tokenize "" tokens [] = Right tokens
 tokenize acc tokens [] =
     case stringedTokenToToken acc of
         Right token -> Right $ tokens ++ [token]
-        Left err -> Left err
+        Left err ->
+            Left err
 -- cases where (acc == "")
 tokenize "" tokens (char : rest)
     | isWhiteSpace char = tokenize "" tokens rest -- acc is empty so just continue
@@ -114,7 +123,8 @@ tokenize "" tokens (char : rest)
         -- in the future also add to acc (now all operators are 1 char)
         case stringedTokenToToken [char] of
             Right token -> tokenize "" (tokens ++ [token]) rest
-            Left err -> Left err -- should not get here ever, its an operatorChar!
+            Left err ->
+                Left err -- should not get here ever, its an operatorChar!
     | otherwise = Left $ "Invalid character: " ++ [char]
 -- cases where (acc /= "")
 tokenize acc tokens (char : rest)
@@ -122,7 +132,8 @@ tokenize acc tokens (char : rest)
         -- if whitespace, then new "word" -> make the previous a token
         case stringedTokenToToken acc of
             Right token -> tokenize "" (tokens ++ [token]) rest
-            Left err -> Left err
+            Left err ->
+                Left err
     | isNum char || isNameChar char = tokenize (acc ++ [char]) tokens rest -- in future check for kind of acc
     | isOperatorChar char =
         case (stringedTokenToToken acc, stringedTokenToToken [char]) of
