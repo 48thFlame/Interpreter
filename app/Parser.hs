@@ -141,15 +141,26 @@ dealWithFunction funcProcessing oppStack@(Fu f : restOpp) outStack =
                 Left err
 
 -- | shuttingYard :: oppStack outputStack inputTokens -> AST
-shuntingYard :: [OpOrParOrFunc] -> [AST] -> [Token] -> Result AST
-shuntingYard [] [ast] [] = Right ast -- finished, done.
-shuntingYard [] _outStack [] =
-    -- this means somehow we finished,
-    -- but the outStack doesn't have a single element (maybe 0 or maybe >2)
-    Left "Failed to parse"
+shuntingYard :: [OpOrParOrFunc] -> [AST] -> [Token] -> Result [AST]
+shuntingYard [] outStack [] = Right outStack -- finished, done.
+-- shuntingYard [] _outStack [] =
+--     -- this means somehow we finished,
+--     -- but the outStack doesn't have a single element (maybe 0 or maybe >2)
+--     Left "Failed to parse"
 shuntingYard oppStack outStack (t : rest) =
     -- for each token
     case t of
+        SemicolonToken ->
+            -- if we hit a semicolon, then we are done with this expression
+            -- so we need to reset the oppStack - and build the expression,
+            case shuntingYard oppStack outStack [] of
+                Right newOutStack ->
+                    -- and then start a new expression
+                    shuntingYard [] newOutStack rest
+                Left err ->
+                    Left err
+        -- shuntingYard [] (outStack ++ ()) rest
+        -- shuntingYard oppStack outStack rest
         -- if its number add to `outStack`
         NumToken n ->
             shuntingYard oppStack (Value n : outStack) rest
@@ -198,11 +209,11 @@ shuntingYard (opf : oppRest) outStack [] =
             Left "Unexpected closing parenthesis!" -- should never get here
 
 -- | parse a string and return the AST
-parse :: String -> AST
+parse :: String -> [AST]
 parse s =
     tokenize "" [] s
         & either error (shuntingYard [] [] . debugLog)
-        & either error id
+        & either error (List.reverse)
 
 -- | solve the AST and return the result
 solve :: AST -> Float
@@ -211,13 +222,20 @@ solve Func{function = f, arguments = args} =
     case f of
         Sin ->
             sin $ solve (head args)
+        Cos ->
+            cos $ solve (head args)
+        Tan ->
+            tan $ solve (head args)
         Pi ->
             pi
+        E ->
+            exp 1
         Max ->
             let [a, b] = map solve args
              in max a b
-        Fst ->
-            solve (head args)
+        Min ->
+            let [a, b] = map solve args
+             in min a b
 solve BinaryOp{left = l, binaryO = o, right = r} =
     case o of
         Addition ->

@@ -21,6 +21,7 @@ data Token
     | FuncToken Function
     | ParToken Parenthesis
     | NumToken Float
+    | SemicolonToken
     deriving (Show, Eq)
 
 data BinaryOperator
@@ -47,22 +48,31 @@ precedence Power = 3
 
 data Function
     = Sin
+    | Cos
+    | Tan
     | Pi
+    | E
     | Max
-    | Fst
+    | Min
     deriving (Eq)
 
 numOfArgs :: Function -> Int
 numOfArgs Sin = 1
+numOfArgs Cos = 1
+numOfArgs Tan = 1
 numOfArgs Pi = 0
+numOfArgs E = 0
 numOfArgs Max = 2
-numOfArgs Fst = 2
+numOfArgs Min = 2
 
 instance Show Function where
     show Sin = "sin"
+    show Cos = "cos"
+    show Tan = "tan"
     show Pi = "pi"
+    show E = "e"
     show Max = "max"
-    show Fst = "fst"
+    show Min = "min"
 
 data Parenthesis
     = OpenP
@@ -79,10 +89,14 @@ stringedTokenToToken s =
         "^" -> Right $ BinOpToken Power
         "(" -> Right $ ParToken OpenP
         ")" -> Right $ ParToken CloseP
+        ";" -> Right SemicolonToken
         "sin" -> Right $ FuncToken Sin -- TODO: make this more general
+        "cos" -> Right $ FuncToken Cos -- TODO: make this more general
+        "tan" -> Right $ FuncToken Tan -- TODO: make this more general
         "pi" -> Right $ FuncToken Pi -- TODO: make this more general
+        "e" -> Right $ FuncToken E -- TODO: make this more general
         "max" -> Right $ FuncToken Max -- TODO: make this more general
-        "fst" -> Right $ FuncToken Fst -- TODO: make this more general
+        "min" -> Right $ FuncToken Min -- TODO: make this more general
         _ ->
             case readMaybe s of
                 Just n -> Right $ NumToken n
@@ -102,7 +116,7 @@ isNameChar c =
         || c == '_'
 
 isOperatorChar :: Char -> Bool
-isOperatorChar c = c `elem` ['+', '-', '*', '/', '^', '(', ')']
+isOperatorChar c = c `elem` ['+', '-', '*', '/', '^', '(', ')', ';']
 
 -- * when operators are more then 1 char, then define this: `data AccType`
 
