@@ -17,6 +17,8 @@ import Expression
 
 data Token
     = SemicolonToken
+    | DoToken
+    | EndToken
     | ExpressionToken ExpressionToken
     deriving (Show)
 
@@ -59,6 +61,7 @@ tokenize acc tokens (char : rest)
             (_, Left err) -> Left err
     | otherwise = Left $ "Invalid character: " ++ [char]
 
+-- | TODO: should have words do 1 thing, and operators do another, like read from some big map
 readToken :: String -> Result Token
 readToken s =
     case s of
@@ -76,6 +79,8 @@ readToken s =
         "pi" -> Right $ ExpressionToken $ FuncToken Pi
         "e" -> Right $ ExpressionToken $ FuncToken E
         "max" -> Right $ ExpressionToken $ FuncToken Max
+        "do" -> Right DoToken
+        "end" -> Right EndToken
         _ ->
             case readMaybe s of
                 Just n -> Right $ ExpressionToken $ NumToken n

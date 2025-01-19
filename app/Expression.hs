@@ -6,6 +6,7 @@ module Expression (
     numOfArgs,
     ExpressionToken (..),
     Expression (..),
+    expressionToDataTree,
     shuntingYard,
     solveExpression,
 ) where
@@ -61,17 +62,17 @@ data Expression
     | FunctionCall Function [Expression]
     | BinaryCalculation Expression BinaryOperator Expression
 
-astToDataTree :: Expression -> Tree.Tree String
-astToDataTree (Value n) =
+expressionToDataTree :: Expression -> Tree.Tree String
+expressionToDataTree (Value n) =
     Tree.Node (show n) []
-astToDataTree (FunctionCall f args) =
-    Tree.Node (show f) (map astToDataTree args)
-astToDataTree (BinaryCalculation l o r) =
-    Tree.Node (show o) [astToDataTree l, astToDataTree r]
+expressionToDataTree (FunctionCall f args) =
+    Tree.Node (show f) (map expressionToDataTree args)
+expressionToDataTree (BinaryCalculation l o r) =
+    Tree.Node (show o) [expressionToDataTree l, expressionToDataTree r]
 
 instance Show Expression where
     show ast =
-        drawVerticalTree $ astToDataTree ast
+        drawVerticalTree $ expressionToDataTree ast
 
 solveExpression :: Expression -> Float
 solveExpression (Value n) = n
