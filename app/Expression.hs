@@ -1,3 +1,8 @@
+{- |
+Module      : Expression
+
+This module contains is in charge of parsing tokens into expressions.
+-}
 module Expression (
     Result,
     BinaryOperator (..),
@@ -8,7 +13,6 @@ module Expression (
     Expression (..),
     expressionToDataTree,
     shuntingYard,
-    solveExpression,
 ) where
 
 import qualified Data.List as List
@@ -73,35 +77,6 @@ expressionToDataTree (BinaryCalculation l o r) =
 instance Show Expression where
     show ast =
         drawVerticalTree $ expressionToDataTree ast
-
-solveExpression :: Expression -> Float
-solveExpression (Value n) = n
-solveExpression (FunctionCall f args) =
-    case f of
-        Sin ->
-            sin $ solveExpression $ head args
-        Cos ->
-            cos $ solveExpression $ head args
-        Tan ->
-            tan $ solveExpression $ head args
-        Pi ->
-            pi
-        E ->
-            exp 1
-        Max ->
-            max (solveExpression $ head args) (solveExpression $ args !! 1)
-solveExpression (BinaryCalculation l o r) =
-    case o of
-        Plus ->
-            solveExpression l + solveExpression r
-        Minus ->
-            solveExpression l - solveExpression r
-        Multiply ->
-            solveExpression l * solveExpression r
-        Divide ->
-            solveExpression l / solveExpression r
-        Power ->
-            solveExpression l ** solveExpression r
 
 -- {- | OperationStackItem is either an operator or a parenthesis or function,
 -- used for shunting yard operator stack

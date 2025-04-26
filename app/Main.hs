@@ -3,6 +3,8 @@ module Main (main) where
 -- import Expression (solveExpression)
 import AST
 
+import Executer
+
 main :: IO ()
 main = do
     putStrLn "---------"
@@ -10,7 +12,8 @@ main = do
     -- let toParse = "2 * (3-4);"
 
     -- let toParse = "12 *23+  6 ^ 7;"
-    let toParse = "do 2+2; 3*6; do 2+3; do 4*8;end end end"
+    -- let toParse = "do 2+2; 3*6; do 2+3; do 4*8;end end end"
+    let toParse = "do 2+2;3*6;  end "
     -- let toParse = "max 2 "
     -- let toParse = "sin;"
     -- let toParse = "e - 2.71828166893 ; sin (2*pi) / cos(2*pi) - tan(2*pi);"
@@ -25,4 +28,4 @@ main = do
     -- code <- readFile "code.fire"
     let ast = buildAST toParse
     print ast
-    print $ solveAST ast
+    print $ runAST ast
