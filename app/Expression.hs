@@ -1,10 +1,15 @@
+{- |
+This module is in charge basically of all the logic. Mainly the `shuntingYard` algorithm
+and the `solveExpression` function.
+-}
 module Expression (
     Result,
     BinaryOperator (..),
     precedence,
     Function (..),
     numOfArgs,
-    ExpressionToken (..),
+    -- ExpressionToken (..),
+    Token (..),
     Expression (..),
     shuntingYard,
     solveExpression,
@@ -16,7 +21,7 @@ import Data.Tree.Pretty (drawVerticalTree)
 
 type Result a = Either String a
 
-data ExpressionToken
+data Token
     = NumToken Float
     | BinOpToken BinaryOperator
     | FuncToken Function
@@ -76,6 +81,8 @@ instance Show Expression where
 solveExpression :: Expression -> Float
 solveExpression (Value n) = n
 solveExpression (FunctionCall f args) =
+    -- When creating the AST, we confirmed that the number of args is sufficient
+    -- so we can safely use `head` and `!!`
     case f of
         Sin ->
             sin $ solveExpression $ head args
@@ -90,21 +97,26 @@ solveExpression (FunctionCall f args) =
         Max ->
             max (solveExpression $ head args) (solveExpression $ args !! 1)
 solveExpression (BinaryCalculation l o r) =
-    case o of
-        Plus ->
-            solveExpression l + solveExpression r
-        Minus ->
-            solveExpression l - solveExpression r
-        Multiply ->
-            solveExpression l * solveExpression r
-        Divide ->
-            solveExpression l / solveExpression r
-        Power ->
-            solveExpression l ** solveExpression r
+    let
+        lSolved = solveExpression l
+        rSolved = solveExpression r
+     in
+        case o of
+            Plus ->
+                lSolved + rSolved
+            Minus ->
+                lSolved - rSolved
+            Multiply ->
+                lSolved * rSolved
+            Divide ->
+                lSolved / rSolved
+            Power ->
+                lSolved ** rSolved
 
--- {- | OperationStackItem is either an operator or a parenthesis or function,
--- used for shunting yard operator stack
--- -}
+{- | OperationStackItem is either an operator or a parenthesis or function,
+used for shunting yard operator stack
+so any token that is not a number
+-}
 data OperationStackItem
     = OpenParOnStack
     | CloseParOnStack
@@ -113,13 +125,15 @@ data OperationStackItem
     deriving (Show)
 
 -- | shuttingYard :: oppStack outputStack inputTokens -> AST
-shuntingYard :: [OperationStackItem] -> [Expression] -> [ExpressionToken] -> Result Expression
-shuntingYard [] [expr] [] = Right expr -- finished, done.
+shuntingYard :: [OperationStackItem] -> [Expression] -> [Token] -> Result Expression
+shuntingYard [] [expr] [] =
+    Right expr -- finished, done.
 shuntingYard [] _outStack [] =
     -- this means somehow we finished,
-    -- but the outStack doesn't have a single element (maybe 0 or maybe >2)
-    Left "Failed to parse"
+    -- but the outStack doesn't have a single element (maybe 0 or maybe >1)
+    Left $ "Failed to parse!\nCurrent outStack: " ++ show _outStack
 shuntingYard oppStack outStack (t : rest) =
+    -- "regular case"
     -- for each token
     case t of
         NumToken n ->
@@ -153,7 +167,7 @@ shuntingYard oppStack outStack (t : rest) =
 shuntingYard (opf : oppRest) outStack [] =
     case opf of
         OpenParOnStack ->
-            Left "Unmatched open parenthesis!"
+            Left "Missing close parenthesis for open parenthesis!"
         CloseParOnStack ->
             Left "Unexpected closing parenthesis!" -- should never get here
         OpOnStack o ->
