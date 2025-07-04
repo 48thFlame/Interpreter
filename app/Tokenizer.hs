@@ -28,8 +28,6 @@ import Expression (
     shuntingYard,
  )
 
-import Data.Function ((&))
-
 -- import Debug.Trace (traceShow)
 -- debugLog :: (Show b) => b -> b
 -- debugLog a =
@@ -39,11 +37,9 @@ import Data.Function ((&))
     buildAST takes a string, tokenizes it,
     and parses it into an AST using `shuntingYard`.
 -}
-buildAST :: String -> Expression
+buildAST :: String -> Result Expression
 buildAST s =
-    tokenize "" [] s
-        & either error (shuntingYard [] [])
-        & either error id
+    shuntingYard [] [] =<< tokenize "" [] s
 
 {- | parse a string and return the tokens
 `tokenize acc tokens str`
