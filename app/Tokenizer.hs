@@ -94,12 +94,19 @@ readToken s =
         "^" -> Right $ BinOpToken Power
         "(" -> Right OpenParenthesisToken
         ")" -> Right CloseParenthesisToken
+        -- "-" -> Right $ FuncToken UniMinus
+        "sqrt" -> Right $ FuncToken Sqrt
+        "abs" -> Right $ FuncToken Abs
+        "max" -> Right $ FuncToken Max
+        "min" -> Right $ FuncToken Min
+        "pi" -> Right $ FuncToken Pi
         "sin" -> Right $ FuncToken Sin
         "cos" -> Right $ FuncToken Cos
         "tan" -> Right $ FuncToken Tan
-        "pi" -> Right $ FuncToken Pi
         "e" -> Right $ FuncToken E
-        "max" -> Right $ FuncToken Max
+        "logBase" -> Right $ FuncToken LogBase
+        "log" -> Right $ FuncToken Log
+        "ln" -> Right $ FuncToken Ln
         _ ->
             case readMaybe s of
                 Just n -> Right $ NumToken n

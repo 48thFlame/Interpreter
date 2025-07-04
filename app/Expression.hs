@@ -45,21 +45,35 @@ precedence Divide = 2
 precedence Power = 3
 
 data Function
-    = Sin
+    = -- = UniMinus
+      Sqrt
+    | Abs
+    | Max
+    | Min
+    | Pi
+    | Sin
     | Cos
     | Tan
-    | Pi
     | E
-    | Max
+    | LogBase
+    | Log
+    | Ln
     deriving (Show)
 
 numOfArgs :: Function -> Int
+-- numOfArgs UniMinus = 1
+numOfArgs Sqrt = 1
+numOfArgs Abs = 1
+numOfArgs Max = 2
+numOfArgs Min = 2
+numOfArgs Pi = 0
 numOfArgs Sin = 1
 numOfArgs Cos = 1
 numOfArgs Tan = 1
-numOfArgs Pi = 0
 numOfArgs E = 0
-numOfArgs Max = 2
+numOfArgs LogBase = 2
+numOfArgs Log = 1
+numOfArgs Ln = 1
 
 data Expression
     = Value Float
@@ -84,18 +98,32 @@ solveExpression (FunctionCall f args) =
     -- When creating the AST, we confirmed that the number of args is sufficient
     -- so we can safely use `head` and `!!`
     case f of
+        -- UniMinus ->
+        --     negate $ solveExpression $ head args
+        Sqrt ->
+            sqrt $ solveExpression $ head args
+        Abs ->
+            abs $ solveExpression $ head args
+        Min ->
+            min (solveExpression $ head args) (solveExpression $ args !! 1)
+        Max ->
+            max (solveExpression $ head args) (solveExpression $ args !! 1)
+        Pi ->
+            pi
         Sin ->
             sin $ solveExpression $ head args
         Cos ->
             cos $ solveExpression $ head args
         Tan ->
             tan $ solveExpression $ head args
-        Pi ->
-            pi
         E ->
             exp 1
-        Max ->
-            max (solveExpression $ head args) (solveExpression $ args !! 1)
+        LogBase ->
+            logBase (solveExpression $ head args) (solveExpression $ args !! 1)
+        Log ->
+            logBase 10 $ solveExpression $ head args
+        Ln ->
+            log $ solveExpression $ head args
 solveExpression (BinaryCalculation l o r) =
     let
         lSolved = solveExpression l
@@ -207,7 +235,11 @@ createFunctionAST f outStack =
                                 ++ " of "
                                 ++ show nOArgs
                     else
-                        Right $ FunctionCall f args : restOut
+                        -- we have enough args, so create the node
+                        -- and add it to the output stack
+                        -- because we wer're using a stack,
+                        -- args are in reverse order, so we need to reverse them
+                        Right $ FunctionCall f (List.reverse args) : restOut
 
 -- | go through the operator stack and create nodes until hit an OpenParenthesis
 dealWithParenthesis :: [OperationStackItem] -> [Expression] -> Result ([OperationStackItem], [Expression])
